@@ -5,6 +5,10 @@
 // @description  İlgilenmediğin pozisyonları, şirketleri ve konumları Kariyer.net, Eleman.net ve Indeed'de otomatik gizler. Tek liste, tüm siteler.
 // @author       t4r1k255
 // @license      MIT
+// @homepageURL  https://github.com/t4r1k255/is-portali-filtresi
+// @supportURL   https://github.com/t4r1k255/is-portali-filtresi/issues
+// @updateURL    https://github.com/t4r1k255/is-portali-filtresi/raw/main/is-portali-filtresi.user.js
+// @downloadURL  https://github.com/t4r1k255/is-portali-filtresi/raw/main/is-portali-filtresi.user.js
 // @match        https://www.kariyer.net/*
 // @match        https://www.eleman.net/*
 // @match        https://*.indeed.com/*
