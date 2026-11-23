@@ -152,10 +152,11 @@
       uygun: (h) => /(^|\.)kariyer\.net$/.test(h),
       ilanLinki: 'a[href*="/is-ilani/"]',
       kartlar: () => Array.from(document.querySelectorAll('.job-list-card-item')),
+      // İkinci seçiciler: ana sayfadaki "öne çıkan ilanlar" kutuları (.slick-item-jobs-box)
       bilgi: (kart) => ({
-        baslik: yazi(kart.querySelector('[data-test="ad-card-title"]')),
-        sirket: yazi(kart.querySelector('[data-test="subtitle"]')),
-        konum: yazi(kart.querySelector('[data-test="location"]')),
+        baslik: yazi(kart.querySelector('[data-test="ad-card-title"], .promoted-job-item-body-title')),
+        sirket: yazi(kart.querySelector('[data-test="subtitle"], .promoted-job-item-body-company')),
+        konum: yazi(kart.querySelector('[data-test="location"], .promoted-job-item-body-location')),
         sponsorlu: !!kart.querySelector('[data-test="ad-card-sponsored-item-title"]'),
       }),
     },
@@ -170,11 +171,18 @@
           tekIlanKoku(b.closest('.c-box'), b, '.ilan_listeleme_bol')
         ),
       bilgi: (kart) => {
+        // Ana sayfa vitrini: <a title="Başlık - Şirket"><img alt="Başlık"><h6 class="c-showcase-box__vtitle">
+        const vitrin = kart.querySelector('.c-showcase-box__vtitle');
+        if (vitrin) {
+          const b = yazi(vitrin);
+          const t = ((kart.querySelector('a[title]') || kart).getAttribute('title') || '').trim();
+          return { baslik: b, sirket: t.startsWith(b + ' - ') ? t.slice(b.length + 3) : '', konum: '', sponsorlu: false };
+        }
         const h3 = kart.querySelector('h3');
         let baslik = h3
           ? Array.from(h3.childNodes).filter((n) => n.nodeType === 3).map((n) => n.textContent).join(' ')
           : '';
-        if (!baslik.trim()) baslik = yazi(h3);
+        if (!baslik.trim()) baslik = yazi(h3 || kart.querySelector('.c-showcase-box__title'));
         const alt = brParcala(kart.querySelector('.c-showcase-box__subtitle'));
         const logo = kart.querySelector('img.c-brand-logo__img');
         return {
@@ -216,38 +224,46 @@
   if (!siteAdi) return;
   const SITE = SITELER[siteAdi];
 
-  // Uyarlayıcı kart bulamazsa (farklı sayfa düzeni) eski yöntem: ilan linkinden yukarı çık.
-  function yedekKartlar() {
+  // Uyarlayıcının tanımadığı düzenlerdeki ilanlar (ör. Eleman.net ana sayfa vitrini):
+  // ilan linkinden en fazla 3 adım yukarı çık; üst öğede başka bir link varsa (liste, slider,
+  // reklam alanı) dur, yoksa ilanla birlikte başka içerik de gizlenir.
+  function yedekKartlar(bilinenler) {
     if (!SITE.ilanLinki) return [];
-    return Array.from(document.querySelectorAll(SITE.ilanLinki))
-      .filter((a) => !a.closest('.ipf-kart'))
-      .map((a) => {
-        let el = a;
-        for (let i = 0; i < 3 && el.parentElement; i++) {
-          if (el.parentElement.querySelectorAll(SITE.ilanLinki).length > 1) break;
-          el = el.parentElement;
-        }
-        return el;
-      });
+    const sonuc = [];
+    for (const a of document.querySelectorAll(SITE.ilanLinki)) {
+      if (bilinenler.some((k) => k.contains(a))) continue;
+      let el = a;
+      for (let i = 0; i < 3 && el.parentElement && el.parentElement !== document.body; i++) {
+        const ust = el.parentElement;
+        if (Array.from(ust.querySelectorAll('a[href]')).some((x) => x !== a && !a.contains(x))) break;
+        el = ust;
+      }
+      sonuc.push({ kart: el, link: a });
+    }
+    return sonuc;
+  }
+
+  const BASLIK_SECICILERI = ['[data-test="ad-card-title"]', 'h3', 'h2', 'h4', '[class*="__title"]', '[class*="card-title"]'];
+  function linkBasligi(a) {
+    for (const s of BASLIK_SECICILERI) {
+      const t = yazi(a.querySelector(s));
+      if (t) return t;
+    }
+    return yazi(a) || (a.getAttribute('title') || '').replace(/\s*iş ilanı$/i, '');
   }
 
   function kartlariTopla() {
-    let kartlar = SITE.kartlar();
-    let yedek = false;
-    if (kartlar.length === 0) {
-      kartlar = yedekKartlar();
-      yedek = true;
-    }
+    const bilinenler = SITE.kartlar().filter(Boolean);
+    const adaylar = bilinenler.map((kart) => ({ kart, link: null })).concat(yedekKartlar(bilinenler));
     const sonuc = [];
     const gorulen = new Set();
-    for (const kart of kartlar) {
-      if (!kart || gorulen.has(kart)) continue;
+    for (const { kart, link } of adaylar) {
+      if (gorulen.has(kart)) continue;
       gorulen.add(kart);
       let ilan;
       try {
-        ilan = yedek
-          ? { baslik: yazi(kart.querySelector(SITE.ilanLinki) || kart), sirket: '', konum: '', sponsorlu: false }
-          : SITE.bilgi(kart);
+        ilan = SITE.bilgi(kart);
+        if (link && !ilan.baslik) ilan.baslik = linkBasligi(link);
       } catch (e) {
         continue;
       }
@@ -310,7 +326,15 @@
     ayar.tasinan[siteAdi] = true;
     ayar = temizle(ayar);
     depoYaz(ayar);
-    if (eski.length) bildir(SITE.ad + ' için eski listeden ' + eski.length + ' ifade aktarıldı.');
+    if (eski.length) {
+      bildir(
+        SITE.ad + ' eski listesinden ' + eski.length + ' ifade Pozisyon sekmesine aktarıldı. ' +
+          'Pozisyon artık yalnız başlığa bakar: şirket/şehir adlarını Şirket/Konum sekmesine taşı.',
+        'Paneli aç',
+        () => panelAcKapa(true),
+        15000
+      );
+    }
   }
 
   function ekle(liste, metin) {
@@ -735,7 +759,7 @@
   }
 
   let bildirimZamani = null;
-  function bildir(metin, eylemAdi, eylem) {
+  function bildir(metin, eylemAdi, eylem, sure) {
     if (!ui) return;
     const parcalar = [el('span', { textContent: metin })];
     if (eylemAdi) {
@@ -753,7 +777,7 @@
     ui.bildirim.replaceChildren(...parcalar);
     ui.bildirim.classList.add('acik');
     clearTimeout(bildirimZamani);
-    bildirimZamani = setTimeout(() => ui.bildirim.classList.remove('acik'), eylemAdi ? 6000 : 3000);
+    bildirimZamani = setTimeout(() => ui.bildirim.classList.remove('acik'), sure || (eylemAdi ? 6000 : 3000));
   }
 
   // =====================================================================
@@ -769,20 +793,21 @@
     document.addEventListener(tur, aracTiklama, true);
   }
 
-  // Sayfa içeriği AJAX ile değişince (sayfalama, filtre, sonsuz kaydırma) yeniden uygula.
-  // Yalnız eklenen/silinen düğümler izlenir; kendi işaretlerimiz (class) tetiklemez.
+  // Sayfa içeriği AJAX ile değişince (filtre, sonsuz kaydırma, yerinde güncellenen başlık) yeniden uygula.
+  // Kendi işaretlerimiz (class) ve araç çubuğumuz tetiklemez.
   let bekleyen = null;
   const bizim = (n) => n.nodeType === 1 && (n.classList.contains('ipf-arac') || n === ui.konak);
   new MutationObserver((kayitlar) => {
-    const ilgili = kayitlar.some(
-      (k) =>
-        !(k.target.closest && k.target.closest('.ipf-arac')) &&
-        (Array.from(k.addedNodes).some((n) => !bizim(n)) || Array.from(k.removedNodes).some((n) => !bizim(n)))
-    );
+    const ilgili = kayitlar.some((k) => {
+      const hedef = k.target.nodeType === 1 ? k.target : k.target.parentElement;
+      if (hedef && hedef.closest('.ipf-arac')) return false;
+      if (k.type === 'characterData') return true;
+      return Array.from(k.addedNodes).some((n) => !bizim(n)) || Array.from(k.removedNodes).some((n) => !bizim(n));
+    });
     if (!ilgili) return;
     clearTimeout(bekleyen);
     bekleyen = setTimeout(uygula, 200);
-  }).observe(document.body, { childList: true, subtree: true });
+  }).observe(document.body, { childList: true, subtree: true, characterData: true });
 
   // Başka sekmede liste değişirse bu sekmeyi de güncelle.
   if (typeof GM_addValueChangeListener === 'function') {
