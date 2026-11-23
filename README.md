@@ -15,7 +15,7 @@ A single userscript that hides job listings you don't care about on Kariyer.net,
 ### Kurulum
 
 1. Tarayıcına [Tampermonkey](https://www.tampermonkey.net/) veya [Violentmonkey](https://violentmonkey.github.io/) kur.
-2. **[Scripti kurmak için buraya tıkla](https://github.com/t4r1k255/is-portali-filtresi/raw/main/is-portali-filtresi.user.js)** ve açılan pencerede **Install / Yükle**'ye bas. Güncellemeler Tampermonkey üzerinden otomatik gelir.
+2. **[Scripti kurmak için buraya tıkla](https://github.com/t4r1k255/flink/raw/main/is-portali-filtresi.user.js)** ve açılan pencerede **Install / Yükle**'ye bas. Güncellemeler Tampermonkey üzerinden otomatik gelir.
 3. Eski Kariyer.net / Eleman.net filtreleri kuruluysa onları kapat (ikisi aynı anda çalışmasın).
 
 ### Kullanım
@@ -62,7 +62,7 @@ A single userscript that hides job listings you don't care about on Kariyer.net,
 ### Install
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) or [Violentmonkey](https://violentmonkey.github.io/).
-2. **[Click here to install the script](https://github.com/t4r1k255/is-portali-filtresi/raw/main/is-portali-filtresi.user.js)** and confirm with **Install**. Updates arrive automatically.
+2. **[Click here to install the script](https://github.com/t4r1k255/flink/raw/main/is-portali-filtresi.user.js)** and confirm with **Install**. Updates arrive automatically.
 3. Disable the old Kariyer.net / Eleman.net filters if you had them.
 
 ### Usage
